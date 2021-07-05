@@ -42,6 +42,16 @@ svn co https://github.com/swxk521/luci-app-eqos package/luci-app-eqos
 # Add luci-app-passwall
 svn co https://github.com/xiaorouji/openwrt-passwall/trunk package/openwrt-passwall
 
+# Add luci-theme-argon
+rm -rf package/lean/luci-theme-argon
+svn co https://github.com/jerrykuku/luci-theme-argon.git package/lean/luci-theme-argon
+
+# Add luci-theme-infinityfreedom
+svn co https://github.com/xiaoqingfengATGH/luci-theme-infinityfreedom package/luci-theme-infinityfreedom
+
+# Add luci-theme-edge
+svn co https://github.com/garypang13/luci-theme-edge package/luci-theme-edge
+
 # Add luci-app-openclash
 svn co https://github.com/vernesong/OpenClash/trunk/luci-app-openclash package/openwrt-openclash
 pushd package/openwrt-openclash/tools/po2lmo && make && sudo make install 2>/dev/null && popd
