@@ -1,0 +1,1 @@
+ntfs-3g $(ls /dev/sd*1) /mnt/hdd -o rw,lazytime,noatime,big_writes

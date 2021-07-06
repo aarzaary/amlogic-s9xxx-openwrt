@@ -1,0 +1,3 @@
+#!/bin/bash
+#date "+%Y-%m-%d %H:%M" -d "+2 min"
+date "+%Y-%m-%d %H:%M" -d "+2 min" > /usr/date.save

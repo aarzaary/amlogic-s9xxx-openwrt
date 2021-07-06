@@ -1,0 +1,3 @@
+#!/bin/bash
+date=$(cat /usr/date.save)
+date -s "$date"

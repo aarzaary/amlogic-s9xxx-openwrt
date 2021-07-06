@@ -1,0 +1,2 @@
+echo "at+wifi=1" > /dev/ttyUSB0
+echo "at+wifi=1" > /dev/ttyUSB1

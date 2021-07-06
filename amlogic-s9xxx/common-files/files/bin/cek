@@ -1,0 +1,15 @@
+#!/bin/bash
+
+while true; do
+   ping -c 1 192.168.98.1 &> /dev/null 
+   status=$?
+   
+   if [ "$status" != "0" ]
+   then
+      date +"%T %d/%m/%Y -> Ping Failed" >> /www/cek/cek.log
+      ovpn 2
+      sleep 30
+    else
+      date +"%T %d/%m/%Y -> Ping Success" > /www/cek/cek2.log
+   fi
+done

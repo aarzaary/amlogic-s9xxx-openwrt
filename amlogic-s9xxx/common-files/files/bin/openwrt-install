@@ -1,0 +1,326 @@
+#!/bin/bash
+#======================================================================================
+# https://github.com/ophub/amlogic-s9xxx-openwrt
+# Description: Install and Update openwrt to emmc for Amlogic S9xxx STB
+# Function: Install openwrt to emmc for Amlogic S9xxx STB
+# Copyright (C) 2020-2021 Flippy
+# Copyright (C) 2020-2021 https://github.com/ophub/amlogic-s9xxx-openwrt
+#======================================================================================
+
+# The MAINLINE_UBOOT is not perfect yet, and the installation is not prompted by default.
+if  [[ "${1}" == "TEST-UBOOT" ]]; then
+    IFSHOW_MAINLINE_UBOOT=1
+else
+    IFSHOW_MAINLINE_UBOOT=0
+fi
+
+# you can change BOOT size >= 128
+BOOT=256
+# you can change ROOT1 size >= 320
+ROOT1=1024
+# you can change ROOT2 size >= 320
+ROOT2=1024
+# shared partition can be ext4, xfs, btrfs, f2fs
+TARGET_SHARED_FSTYPE=btrfs
+
+hasdrives=$(lsblk | grep -oE '(mmcblk[0-9])' | sort | uniq)
+if [ "$hasdrives" = "" ]; then
+    echo "No EMMC or SD devices were found in this system!!! "
+    exit 1
+fi
+
+avail=$(lsblk | grep -oE '(mmcblk[0-9]|sda[0-9])' | sort | uniq)
+if [ "$avail" = "" ]; then
+    echo "The system did not find any available disk devices!!!"
+    exit 1
+fi
+
+runfrom=$(lsblk | grep -e '/$' | grep -oE '(mmcblk[0-9]|sda[0-9])')
+if [ "$runfrom" = "" ]; then
+    echo "Root file system not found!!! "
+    exit 1
+fi
+
+emmc=$(echo $avail | sed "s/$runfrom//" | sed "s/sd[a-z][0-9]//g" | sed "s/ //g")
+if [ "$emmc" = "" ]; then
+    echo "No idle EMMC equipment is found, or the system is already running on EMMC equipment!!!"
+    exit 1
+fi
+
+if [ "$runfrom" = "$avail" ]; then
+    echo "Your system is already running on the EMMC device!!! "
+    exit 1
+fi
+
+if [ $runfrom = $emmc ]; then
+    echo "Your system is already running on the EMMC device!!! "
+    exit 1
+fi
+
+if [ "$(echo $emmc | grep mmcblk)" = "" ]; then
+    echo "There seems to be no EMMC device on your system!!! "
+    exit 1
+fi
+
+# EMMC DEVICE NAME
+EMMC_NAME="$emmc"
+EMMC_DEVPATH="/dev/$EMMC_NAME"
+echo $EMMC_DEVPATH
+EMMC_SIZE=$(lsblk -l -b -o NAME,SIZE | grep ${EMMC_NAME} | sort | uniq | head -n1 | awk '{print $2}')
+echo "$EMMC_NAME : $EMMC_SIZE bytes"
+
+ROOT_NAME=$(lsblk -l -o NAME,MAJ:MIN,MOUNTPOINT | grep -e '/$' | awk '{print $1}')
+echo "ROOTFS: $ROOT_NAME"
+
+BOOT_NAME=$(lsblk -l -o NAME,MAJ:MIN,MOUNTPOINT | grep -e '/boot$' | awk '{print $1}')
+echo "BOOT: $BOOT_NAME"
+
+#Choose the type of installation box
+FDTFILE="meson-gxl-s905x-p212.dtb"
+U_BOOT_EXT=0
+
+
+echo -e "\033[1;32m FDT Value [ ${FDTFILE} ] \033[0m"
+
+if [  ! -f "/boot/dtb/amlogic/${FDTFILE}" ]; then
+    echo "/boot/dtb/amlogic/${FDTFILE} does not exist!"
+    echo "You can download the .dtb file from [ https://github.com/ophub/amlogic-s9xxx-openwrt/tree/main/amlogic-s9xxx/amlogic-dtb ]"
+    echo "Copy it to [ /boot/dtb/amlogic/ ]."
+    echo "Then execute this Install command."
+    exit 1
+fi
+
+#Check if writing to EMMC is supported
+MODULES_NOW=$(ls /lib/modules/ 2>/dev/null)
+VERSION_NOW=$(echo ${MODULES_NOW} | grep -oE '^[1-9].[0-9]{1,2}' 2>/dev/null)
+echo -e "\033[1;32m This Kernel [ ${MODULES_NOW} ] \033[0m"
+
+k510_ver=${VERSION_NOW%%.*}
+k510_maj=${VERSION_NOW##*.}
+if  [ ${k510_ver} -eq "5" ];then
+    if  [ "${k510_maj}" -ge "10" ];then
+        K510=1
+    else
+        K510=0
+    fi
+elif [ ${k510_ver} -gt "5" ];then
+    K510=1
+else
+    K510=0
+fi
+
+# Check 5.10 kernel
+if  [[ "${K510}" -eq "1" ]]; then
+    if  [[ -z "${MAINLINE_UBOOT}" || "${IFSHOW_MAINLINE_UBOOT}" -eq "0" ]]; then
+        echo -e "\033[1;31m This 5.10 kernel is recommended to be used in TF/SD cards! \033[0m"
+        exit 1
+    fi
+fi
+
+swapoff -a
+
+# umount all other mount points
+MOUNTS=$(lsblk -l -o MOUNTPOINT)
+for mnt in $MOUNTS; do
+    if [ "$mnt" == "MOUNTPOINT" ]; then
+        continue
+    fi
+
+    if [ "$mnt" == "" ]; then
+        continue
+    fi
+
+    if [ "$mnt" == "/" ]; then
+        continue
+    fi
+
+    if [ "$mnt" == "/boot" ]; then
+        continue
+    fi
+
+    if [ "$mnt" == "/opt" ]; then
+        continue
+    fi
+    
+    if [ "$mnt" == "[SWAP]" ]; then
+        echo "swapoff -a"
+        swapoff -a
+        continue
+    fi
+
+    if echo $mnt | grep $EMMC_NAME; then
+        echo "umount -f $mnt"
+        umount -f $mnt
+        if [ $? -ne 0 ]; then
+            echo "$mnt Cannot be uninstalled, the installation process is aborted."
+            exit 1
+        fi
+    fi
+done
+
+# fix wifi macaddr
+if [ -x /usr/bin/fix_wifi_macaddr.sh ]; then
+    /usr/bin/fix_wifi_macaddr.sh
+fi
+
+# mkfs
+echo "Start creating file system ... "
+echo "Create a boot file system ... "
+
+echo "format boot partiton..."
+mkfs.fat -n EMMC_BOOT -F 32 /dev/${EMMC_NAME}p1
+mkdir -p /mnt/${EMMC_NAME}p1
+sleep 2
+umount -f /mnt/${EMMC_NAME}p1 2>/dev/null
+
+echo "format rootfs1 partiton..."
+ROOTFS1_UUID=$(/usr/bin/uuidgen)
+mkfs.btrfs -f -U ${ROOTFS1_UUID} -L EMMC_ROOTFS1 -m single /dev/${EMMC_NAME}p2
+mkdir -p /mnt/${EMMC_NAME}p2
+sleep 2
+umount -f /mnt/${EMMC_NAME}p2 2>/dev/null
+
+# mount and copy
+echo "Wait for the boot file system to mount ... "
+i=1
+max_try=10
+while [ $i -le $max_try ]; do
+    mount -t vfat /dev/${EMMC_NAME}p1 /mnt/${EMMC_NAME}p1 2>/dev/null
+    sleep 2
+    mnt=$(lsblk -l -o MOUNTPOINT | grep /mnt/${EMMC_NAME}p1)
+
+    if [ "$mnt" == "" ]; then
+        if [ $i -lt $max_try ]; then
+            echo "Not mounted successfully, try again ..."
+            i=$((i+1))
+        else
+            echo "Cannot mount the boot file system, give up!"
+            exit 1
+        fi
+    else
+        echo "Successfully mounted."
+        echo "copy boot ..."
+        cd /mnt/${EMMC_NAME}p1
+        rm -rf /boot/'System Volume Information/'
+        (cd /boot && tar cf - .) | tar xf -
+        sync
+
+        echo "Edit uEnv.txt ..."
+        cat > uEnv.txt <<EOF
+LINUX=/zImage
+INITRD=/uInitrd
+FDT=/dtb/amlogic/${FDTFILE}
+APPEND=root=UUID=${ROOTFS1_UUID} rootfstype=btrfs rootflags=compress=zstd console=ttyAML0,115200n8 console=tty0 no_console_suspend consoleblank=0 fsck.fix=yes fsck.repair=yes net.ifnames=0 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory swapaccount=1
+EOF
+
+        rm -f s905_autoscript* aml_autoscript*
+
+        if  [ ${U_BOOT_EXT} -eq 1 ]; then
+            if  [ -f u-boot.ext ]; then
+                cp -f -v u-boot.ext u-boot.emmc
+            else
+                cp -f -v u-boot.sd u-boot.emmc
+            fi
+        fi
+
+        mv -f boot-emmc.ini boot.ini
+        mv -f boot-emmc.cmd boot.cmd
+        mv -f boot-emmc.scr boot.scr
+
+        sync
+        echo "complete."
+        cd /
+        umount -f /mnt/${EMMC_NAME}p1
+        break
+    fi
+done
+echo "complete."
+
+echo "Wait for the rootfs file system to mount ... "
+i=1
+while [ $i -le $max_try ]; do
+    mount -t btrfs -o compress=zstd /dev/${EMMC_NAME}p2 /mnt/${EMMC_NAME}p2 2>/dev/null
+    sleep 2
+    mnt=$(lsblk -l -o MOUNTPOINT | grep /mnt/${EMMC_NAME}p2)
+    if [ "$mnt" == "" ]; then
+        if [ $i -lt $max_try ]; then
+            echo "Not mounted successfully, try again ..."
+            i=$((i+1))
+        else
+            echo "Cannot mount rootfs file system, give up!"
+            exit 1
+        fi
+    else
+        echo "Successfully mounted"
+        echo "Create folder ... "
+        cd /mnt/${EMMC_NAME}p2
+        mkdir -p bin boot dev etc lib opt mnt overlay proc rom root run sbin sys tmp usr www .reserved
+        ln -sf lib/ lib64
+        ln -sf tmp/ var
+        echo "complete."
+		
+        COPY_SRC="root etc bin sbin lib opt usr www"
+        echo "Copy data ... "
+        for src in $COPY_SRC; do
+            echo "copy [ $src ] ..."
+            (cd / && tar cf - $src) | tar xf -
+            sync
+        done
+        wait
+
+        rm -rf opt/docker && ln -sf /mnt/${EMMC_NAME}p4/docker/ opt/docker >/dev/null
+        rm -rf usr/bin/AdGuardHome && ln -sf /mnt/${EMMC_NAME}p4/AdGuardHome usr/bin/ >/dev/null
+        echo "Copy complete."
+		
+        echo "Edit configuration file ..."
+        #cd /mnt/${EMMC_NAME}p2/usr/bin/
+        #rm -f openwrt-install openwrt-update
+        cd /mnt/${EMMC_NAME}p2/etc/rc.d
+        ln -sf ../init.d/dockerd S99dockerd
+        cd /mnt/${EMMC_NAME}p2/etc
+        cat > fstab <<EOF
+UUID=${ROOTFS1_UUID} / btrfs compress=zstd 0 1
+LABEL=EMMC_BOOT /boot vfat defaults 0 2
+#tmpfs /tmp tmpfs defaults,nosuid 0 0
+EOF
+
+        cd /mnt/${EMMC_NAME}p2/etc/config
+        cat > fstab <<EOF
+config  global
+        option anon_swap '0'
+        option anon_mount '0'
+        option auto_swap '0'
+        option auto_mount '1'
+        option delay_root '5'
+        option check_fs '0'
+
+config  mount
+        option target '/overlay'
+        option uuid '${ROOTFS1_UUID}'
+        option enabled '1'
+        option enabled_fsck '1'
+        option fstype 'btrfs'
+        option options 'compress=zstd'
+
+config  mount
+        option target '/boot'
+        option label 'EMMC_BOOT'
+        option enabled '1'
+        option enabled_fsck '0'
+        option fstype 'vfat'
+
+EOF
+        chattr +ia fstab 2>/dev/null
+        
+        cd /
+        umount -f /mnt/${EMMC_NAME}p2
+        break
+    fi
+done
+echo "complete."
+
+sync
+wait
+
+echo "Install completed, please [ reboot ] the system!"
+
