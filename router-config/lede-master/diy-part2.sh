@@ -37,20 +37,20 @@ sed -i 's/ash/bash/g' package/base-files/files/etc/passwd
 svn co https://github.com/ophub/luci-app-amlogic/trunk/luci-app-amlogic package/luci-app-amlogic
 
 # Add luci-app-eqos
-svn co https://github.com/swxk521/luci-app-eqos package/luci-app-eqos
+svn co https://github.com/swxk521/luci-app-eqos/trunk package/eqos
 
 # Add luci-app-passwall
 svn co https://github.com/xiaorouji/openwrt-passwall/trunk package/openwrt-passwall
 
 # Add luci-theme-argon
 rm -rf package/lean/luci-theme-argon
-svn co https://github.com/jerrykuku/luci-theme-argon.git package/lean/luci-theme-argon
+svn co https://github.com/jerrykuku/luci-theme-argon/trunk package/lean/luci-theme-argon
 
 # Add luci-theme-infinityfreedom
-svn co https://github.com/xiaoqingfengATGH/luci-theme-infinityfreedom package/luci-theme-infinityfreedom
+svn co https://github.com/xiaoqingfengATGH/luci-theme-infinityfreedom/trunk package/luci-theme-infinityfreedom
 
 # Add luci-theme-edge
-svn co https://github.com/garypang13/luci-theme-edge package/luci-theme-edge
+svn co https://github.com/garypang13/luci-theme-edge/trunk package/luci-theme-edge
 
 # Add luci-app-openclash
 svn co https://github.com/vernesong/OpenClash/trunk/luci-app-openclash package/openwrt-openclash
