@@ -42,15 +42,27 @@ svn co https://github.com/swxk521/luci-app-eqos/trunk package/eqos
 # Add luci-app-passwall
 svn co https://github.com/xiaorouji/openwrt-passwall/trunk package/openwrt-passwall
 
+# Add luci-theme-lafite-port
+svn co https://github.com/fhh200000/luci-theme-lafite-port/trunk package/luci-theme-lafite-port
+
+# Add luci-theme-tano
+svn co https://github.com/tano-systems/luci-theme-tano/trunk package/luci-theme-tano
+
 # Add luci-theme-argon
 rm -rf package/lean/luci-theme-argon
-svn co https://github.com/jerrykuku/luci-theme-argon/trunk package/lean/luci-theme-argon
+git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git package/lean/luci-theme-argon
+
+# Add luci-theme-atmaterial
+svn co https://github.com/Kinodi/luci-theme-atmaterial/trunk package/luci-theme-atmaterial
+
+# Add luci-theme-netgear
+svn co https://github.com/i028/luci-theme-netgear/trunk package/luci-theme-netgear
 
 # Add luci-theme-infinityfreedom
 svn co https://github.com/xiaoqingfengATGH/luci-theme-infinityfreedom/trunk package/luci-theme-infinityfreedom
 
 # Add luci-theme-edge
-svn co https://github.com/garypang13/luci-theme-edge/trunk package/luci-theme-edge
+git clone -b 18.06 https://github.com/garypang13/luci-theme-edge.git package/luci-theme-edge
 
 # Add luci-app-openclash
 svn co https://github.com/vernesong/OpenClash/trunk/luci-app-openclash package/openwrt-openclash
