@@ -42,11 +42,8 @@ svn co https://github.com/swxk521/luci-app-eqos/trunk package/eqos
 # Add luci-app-passwall
 svn co https://github.com/xiaorouji/openwrt-passwall/trunk package/openwrt-passwall
 
-# Add luci-theme-lafite-port
-svn co https://github.com/fhh200000/luci-theme-lafite-port/trunk package/luci-theme-lafite-port
-
 # Add luci-theme-tano
-svn co https://github.com/tano-systems/luci-theme-tano/trunk package/luci-theme-tano
+svn co https://github.com/tano-systems/luci-theme-tano/trunk/src/luci-theme-tano package/luci-theme-tano
 
 # Add luci-theme-argon
 rm -rf package/lean/luci-theme-argon
