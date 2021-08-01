@@ -152,7 +152,19 @@ jobs:
         [ -d openwrt-armvirt ] || mkdir -p openwrt-armvirt
         cp -f openwrt/bin/targets/*/*/*.tar.gz openwrt-armvirt/ && sync
         sudo chmod +x make
+<<<<<<< HEAD
         sudo ./make -d -b s905x -k 5.4.134
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+        sudo ./make -d -b s905x -k 5.4.129
+=======
+        sudo ./make -d -b s905x3_s905x2_s905x_s905d_s922x_s912 -k 5.13.3_5.4.133
+>>>>>>> 746616ce24d548f66704b3d580c001518766139a
+=======
+        sudo ./make -d -b s905x3_s905x2_s905x_s905d_s922x_s912 -k 5.13.6_5.4.136
+>>>>>>> f682940737afbabc04187b45e36f29fe21f2489a
+>>>>>>> ophub-main
         [ -d ipk ] || mkdir -p ipk
         cp -rf $(find openwrt/bin/packages/ -type f -name "*.ipk") ipk/ && sync
         sudo tar -czf ipk.tar.gz ipk && mv -f ipk.tar.gz out/ && sync
